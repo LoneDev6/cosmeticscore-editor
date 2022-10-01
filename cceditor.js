@@ -8,7 +8,7 @@
 		author: "LoneDev",
 		description: "Utility to easily preview cosmetics.",
 		icon: icon,
-		version: "1.0.0-beta2",
+		version: "1.0.0-beta3",
 		variant: "both",
 		onload: onload,
 		onunload() {  },
