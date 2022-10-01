@@ -15,16 +15,15 @@
 		onuninstall() { }
 	});
 
-
-    const CustomAction = (id, options) => {
-        const action = new Action(id, options)
-        // bus.on(events.LIFECYCLE.CLEANUP, action.delete.bind(action))
-        return action
-    }
-
     function onload()
     {
         (function() {
+
+            const CustomAction = (id, options) => {
+                const action = new Action(id, options)
+                // bus.on(events.LIFECYCLE.CLEANUP, action.delete.bind(action))
+                return action
+            }
 
             const menu = new BarMenu('CosmeticsCore', [], {
                 condition: () => Project.format && Project.format.codec.id === 'java_block'
@@ -193,6 +192,15 @@
 
             $("#head").click(function () {
                 orig_updateDisplayBase();
+            });
+
+            $("#mode_selector li").click(function(e) {
+                if (e.button === 0) {
+                    if(!Modes.options.display.selected) {
+                        lastToastNotif?.delete()
+                        setBodyCosmeticsViewSelected(false)
+                    }
+                }
             });
 
             function isSelfModel() {
