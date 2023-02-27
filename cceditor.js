@@ -8,8 +8,9 @@
 		author: "LoneDev",
 		description: "Utility to easily preview cosmetics.",
 		icon: icon,
-		version: "1.0.0-beta3",
+		version: "1.0.0-beta4",
 		variant: "both",
+        min_version: "4.6.4",
 		onload: onload,
 		onunload() {  },
 		onuninstall() { }
@@ -255,6 +256,10 @@
             }
 
             function getHeadData() {
+                if(!Project.display_settings["head"]) {
+                    Project.display_settings["head"] = new DisplaySlot();
+                    //DisplayMode.updateDisplayBase();
+                }
                 return Project.display_settings["head"];
             }
 
@@ -330,12 +335,12 @@
 
                     Modes.options.edit.select()
 
-                    scaleModel(0.5)
+                    scale(0.5)
 
                     // Move the WHOLE model down in the editor mode
                     moveAllDownUntilLimit()
 
-
+                    // Scale the "head" display x2
                     headData.scale[0] *= 2;
                     headData.scale[1] *= 2;
                     headData.scale[2] *= 2;
@@ -397,13 +402,15 @@
                 }
             }
 
-            function scaleModel(scale) {
+            function scale(size) {
+                if (Outliner.selected.length == 0) {
+                    Prop.active_panel = 'preview';
+                    selectAll();
+                }
 
-                selectAll()
+                Undo.initEdit({elements: Outliner.selected, outliner: Format.bone_rig});
 
-                Undo.initEdit({elements: Outliner.selected, outliner: Format.bone_rig})
-
-                Outliner.selected.forEach(function(obj) {
+                Outliner.selected.forEach((obj) => {
                     obj.before = {
                         from: obj.from ? obj.from.slice() : undefined,
                         to: obj.to ? obj.to.slice() : undefined,
@@ -416,15 +423,21 @@
                         }
                     }
                 })
-                getScaleAllGroups().forEach((g) => {
+                ModelScaler.getScaleGroups().forEach((g) => {
                     g.old_origin = g.origin.slice();
                 }, Group, true)
-                var v = Format.centered_grid ? 0 : 8;
-                var origin = Group.selected ? Group.selected.origin : [v, 0, v];
-                $('#scaling_origin_x').val(origin[0])
-                $('#scaling_origin_y').val(origin[1])
-                $('#scaling_origin_z').val(origin[2])
-                scaleAll(false, scale)
+
+                ModelScaler.dialog.show();
+
+                ModelScaler.overflow = null;
+                let v = Format.centered_grid ? 0 : 8;
+                let origin = Group.selected ? Group.selected.origin : [v, 0, v];
+                ModelScaler.dialog.setFormValues({
+                    origin,
+                    scale: size
+                });
+
+                ModelScaler.dialog.confirm();
             }
 
             function autoFixSelfModel() {
