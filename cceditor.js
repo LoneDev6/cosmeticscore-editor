@@ -8,7 +8,7 @@
 		author: "LoneDev",
 		description: "Utility to easily preview cosmetics.",
 		icon: icon,
-		version: "1.0.0-beta4",
+		version: "1.0.1-beta-1",
 		variant: "both",
         min_version: "4.6.4",
 		onload: onload,
@@ -40,19 +40,72 @@
             img.style.marginRight = '5px'
             menu.label.prepend(img)
 
+            function getDynamicMsg(dynamic) {
+                return "This self body cosmetic is compatible with " + dynamic + ". To create a self body cosmetic for other versions please open the original cosmetic file and check this menu for another option."
+            }
             MenuBar.addAction(
                 CustomAction({
                     icon: 'checkroom',
                     category: 'CosmeticsCore',
-                    name: "Body Cosmetic Preview",
+                    name: "Self body cosmetic compatibility: Minecraft client 1.20.1 and lower",
+                    id: 'body_cosmetic_info',
+                    condition: () => isSelfModel(),
+                    click: function () {
+                        Blockbench.showMessageBox({
+                            title: "Info",
+                            message: getDynamicMsg("Minecraft client 1.20.1 and lower")
+                        });
+                    },
+                }),
+                'CosmeticsCore'
+            )
+            MenuBar.addAction(
+                CustomAction({
+                    icon: 'checkroom',
+                    category: 'CosmeticsCore',
+                    name: "Self body cosmetic type: 1.20.2 and greater",
+                    id: 'body_cosmetic_info',
+                    condition: () => isSelfModelNew(),
+                    click: function () {
+                        Blockbench.showMessageBox({
+                            title: "Info",
+                            message: getDynamicMsg("Minecraft client 1.20.2 and greater")
+                        });
+                    },
+                }),
+                'CosmeticsCore'
+            )
+            MenuBar.addAction(
+                new MenuSeparator('amogus'),
+                'CosmeticsCore'
+            )
+            MenuBar.addAction(
+                CustomAction({
+                    icon: 'checkroom',
+                    category: 'CosmeticsCore',
+                    name: "Preview global body model",
                     id: 'body_cosmetic_preview',
-                    condition: () => !isBodyCosmeticsViewSelected(),
+                    condition: () => !isBodyCosmeticsViewSelected() && !isAnySelfModel(),
                     click: function () {
                         bodyCosmeticPreview();
                     },
                 }),
                 'CosmeticsCore'
             )
+            MenuBar.addAction(
+                CustomAction({
+                    icon: 'checkroom',
+                    category: 'CosmeticsCore',
+                    name: "Preview self body model",
+                    id: 'body_cosmetic_preview_self',
+                    condition: () => !isBodyCosmeticsViewSelected() && isAnySelfModel(),
+                    click: function () {
+                        bodyCosmeticPreview(isSelfModelNew());
+                    },
+                }),
+                'CosmeticsCore'
+            )
+
             MenuBar.addAction(
                 CustomAction({
                     icon: 'cancel',
@@ -74,70 +127,101 @@
                     category: 'CosmeticsCore',
                     name: "Auto fix self model",
                     id: 'auto_fix_self_model',
-                    condition: () => isSelfModel(),
+                    condition: () => isAnySelfModel(),
                     click: function () {
                         autoFixSelfModel()
                     },
                 }),
                 'CosmeticsCore'
             )
+
+            function createSelfModel (isNewSelfBody) {
+                if(!Project.saved) {
+                    Blockbench.showMessageBox({
+                        title: "Error",
+                        message: "Please save this model first."
+                    });
+                    return;
+                }
+
+                let suffix = isNewSelfBody ? "_self_2" : "_self"
+
+                // If it's not already a self model
+                if(!Project.export_path.match(/_self(|_2).json/g)) {
+                    let origPath = Project.export_path
+                    let origName = Project.name
+                    // Temporary change export path of the current project in order to export it to a new file.
+                    let selfPath = Project.export_path.replace(".json", suffix + ".json")
+                    Project.export_path = selfPath
+                    // Do export
+                    // NOTE: file name might have been changed by the user using the save file dialog, careful.
+                    Project.format.codec.export()
+
+                    // Restore original name for this project
+                    Project.export_path = origPath
+                    Project.name = origName
+
+                    // Load the just saved self model in a new tab.
+                    // WARNING: it's unreliable: if the user pressed CANCEL during name selection and the file already exists
+                    // It will open that file even if it's not our new created file (since none was created).
+                    Blockbench.read([selfPath],{
+                        resource_id: 'model',
+                        extensions: Codec.getAllExtensions(),
+                        type: 'Model',
+                    }, function(files) {
+                        if(files.length === 1) {
+                            loadModelFile(files[0]);
+
+                            Blockbench.showMessageBox({
+                                title: "Success",
+                                message: "Successfully generated self model. You can now edit its preview position to make it look correctly placed."
+                            });
+
+                            setTimeout(function() {
+                                bodyCosmeticPreview();
+                            }, 1500);
+
+                        } else {
+                            Blockbench.showMessageBox({
+                                title: "Error",
+                                message: "Please save the self model as required."
+                            });
+                        }
+                    })
+                }
+            }
             MenuBar.addAction(
                 CustomAction({
                     icon: 'auto_fix_high',
                     category: 'CosmeticsCore',
                     name: "Create Self Model",
                     id: 'create_self_model',
-                    condition: () => !isSelfModel(),
-                    click: function () {
-
-                        if(!Project.saved) {
-                            Blockbench.showMessageBox({
-                                title: "Error",
-                                message: "Please save this model first."
-                            });
-                            return;
-                        }
-
-                        if(!Project.export_path.endsWith("_self.json")) {
-                            let selfPath = Project.export_path.replace(".json", "_self.json")
-                            Project.export_path = selfPath
-                            Project.format.codec.export()
-
-                            Project.export_path = Project.export_path.replace("_self.json", ".json")
-                            Project.name = Project.name.replace("_self", "")
-
-                            // Load the self model in a new tab
-                            Blockbench.read([selfPath],{
-                                resource_id: 'model',
-                                extensions: Codec.getAllExtensions(),
-                                type: 'Model',
-                            }, function(files) {
-                                if(files.length === 1) {
-                                    loadModelFile(files[0]);
-
-
-                                    Blockbench.showMessageBox({
-                                        title: "Success",
-                                        message: "Successfully generated self model. You can now edit its preview position to make it look correctly placed."
-                                    });
-
-                                    setTimeout(function() {
-                                        bodyCosmeticPreview();
-                                    }, 1500);
-
-                                } else {
-                                    Blockbench.showMessageBox({
-                                        title: "Error",
-                                        message: "Please save the self model as required."
-                                    });
-                                }
+                    condition: () => !isAnySelfModel(),
+                    children() {
+                        return [
+                            CustomAction({
+                                icon: 'auto_fix_high',
+                                category: 'CosmeticsCore',
+                                name: "Self Model 1.20.1 and lower",
+                                id: 'create_self_model_1',
+                                condition: () => !isAnySelfModel(),
+                                click: () => createSelfModel(),
+                            }),
+                            CustomAction({
+                                icon: 'auto_fix_high',
+                                category: 'CosmeticsCore',
+                                name: "Self Model 1.20.1+",
+                                id: 'create_self_model_2',
+                                condition: () => !isAnySelfModel(),
+                                click: () => createSelfModel(true),
                             })
-                        }
-
-                    },
+                        ]
+                    }
                 }),
                 'CosmeticsCore'
             )
+
+
             MenuBar.update()
 
 
@@ -147,6 +231,7 @@
                 target: [0, 8, 0],
                 default: true
             }
+            let prevSelectedMode;
 
             // Inject behaviour
             const orig_updateDisplayBase = DisplayMode.updateDisplayBase
@@ -173,14 +258,17 @@
 
             DisplayMode.loadbody_cosmetic = function() {		//Loader
                 loadDispbody_cosmetic('head')
+
+                // Change model to player
+                window.displayReferenceObjects.bar(['player'])
+
+                // Set camera rotation and position
                 display_preview.camPers.position.set(-44, 40, -44)
                 display_preview.controls.target.set(0, 14, 0)
                 display_preview.loadAnglePreset({
                     position: [-44, 40, -44],
                     target: [0, 14, 0]
                 })
-                window.displayReferenceObjects.bar(['player'])
-
                 display_preview.loadAnglePreset(display_angle_preset)
             }
 
@@ -204,10 +292,22 @@
                 }
             });
 
+            function isAnySelfModel() {
+                if(!Project.name)
+                    return false;
+                return Project.name.endsWith("self") || Project.name.endsWith("self_2");
+            }
+
             function isSelfModel() {
                 if(!Project.name)
                     return false;
                 return Project.name.endsWith("self");
+            }
+
+            function isSelfModelNew() {
+                if(!Project.name)
+                    return false;
+                return Project.name.endsWith("self_2");
             }
 
             function removeTool(toolId) {
@@ -216,14 +316,15 @@
             }
 
             function isBodyCosmeticsViewSelected() {
-                return $("#body_cosmetic").is(":checked")
+                return Modes.options.display.selected && $("#body_cosmetic").is(":checked")
             }
 
             function setBodyCosmeticsViewSelected(show) {
-                if(show && !Modes.options.display.selected) {
-                    Modes.options.display.select()
-                }
                 if(show) {
+                    prevSelectedMode = Modes.selected
+                    if(!Modes.options.display.selected) {
+                        Modes.options.display.select()
+                    }
                     $("#body_cosmetic").trigger("click");
                     DisplayMode.loadbody_cosmetic()
 
@@ -233,10 +334,16 @@
 
                     // Hide head pose
                     $("#display_sliders").children().slice(-2).hide()
+
+                    // Make sure the head preview is reset to avoid showing the cosmetic in the wrong rotation.
+                    displayReferenceObjects.active.pose_angles["head"] = 0;
+                    if (displayReferenceObjects.active.updateBasePosition)
+                        displayReferenceObjects.active.updateBasePosition();
+
+                    setTimeout(function () {
+                        fixGizmoPreviewCosmetic()
+                    }, 200)
                 } else {
-
-                    let newSelectedMode = Modes.selected
-
                     Modes.options.display.select()
 
                     // First tab
@@ -251,7 +358,9 @@
                     $("#display_sliders").children().slice(-2).show()
 
                     // Restore original selected tab
-                    newSelectedMode.select()
+                    if(prevSelectedMode == null)
+                        prevSelectedMode = Modes.options.edit
+                    prevSelectedMode.select()
                 }
             }
 
@@ -299,16 +408,34 @@
                 display_base.scale.y = (slot.scale[1]||0.001) * (slot.mirror[1] ? -1 : 1);
                 display_base.scale.z = (slot.scale[2]||0.001) * (slot.mirror[2] ? -1 : 1);
 
-                Transformer.center()
+                //Transformer.center()
 
-                display_base.position.y = slot.translation[1] + (isSelfModel() ? 95 : 35); // Self / Global model offset
+                let offset = isSelfModelNew() ? 97.5 : (isSelfModel() ? 95 : 35);
+                display_base.position.y = slot.translation[1] + offset;
+
+                // Hack to move the gizmo on the model and avoid the glitchy location (too high)
+                // delete Transformer.rotation_ref;
+                // Transformer.attach(display_base)
+                // display_base.position.y -= 100 // Temporary change the model location to hack the gizmo location
+                // display_base.getWorldPosition(Transformer.position);
+                // Transformer.update()
+                // display_base.position.y += 110 // Restore the correct offset to the model
+
+
+                // Hack to move the gizmo on the model and avoid the glitchy location (too high)
+                // delete Transformer.rotation_ref;
+                // Transformer.position.y = 67.5 - display_base.position.y
+                // Transformer.update()
+
+                // Temporary hack to keep the gizmo in the center of the back
+                fixGizmoPreviewCosmetic()
             }
 
             function bodyCosmeticPreview() {
                 setBodyCosmeticsViewSelected(true)
 
                 lastToastNotif?.delete()
-                if(isSelfModel()) {
+                if(isAnySelfModel()) {
                     lastToastNotif = Blockbench.showToastNotification({
                         text: `This is a SELF cosmetic model.\n(If you want to edit the GLOBAL model: create a new file and rename it to '${Project.name.replaceAll("_self", "")}.json')`,
                         expire: 30000
@@ -328,7 +455,7 @@
                     if(headData.scale[0] * 2 > 4) {
                         Blockbench.showMessageBox({
                             title: "Error",
-                            message: "Error! Cannot scale the model up more than this!"
+                            message: "Error! Cannot scale the model down more than this!"
                         });
                         return;
                     }
@@ -455,6 +582,21 @@
                     }
                 });
             }
+
+            function fixGizmoPreviewCosmetic() {
+                if(isBodyCosmeticsViewSelected()) {
+                    Transformer.position.y = 15;
+                    Transformer.position.z = 2;
+                }
+            }
+
+            // Shit to fix the location of the Gizmo on any other event.
+            setInterval(fixGizmoPreviewCosmetic, 1000);
+
+            Blockbench.on('undo', (event) => {
+                // Shit to fix the location of the Gizmo on undo.
+                fixGizmoPreviewCosmetic()
+            });
 
         })()
     }
