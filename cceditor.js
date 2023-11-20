@@ -6,9 +6,9 @@
     Plugin.register("cceditor", {
 		title: "CosmeticsCore Editor",
 		author: "LoneDev",
-		description: "Utility to easily preview cosmetics.",
+		description: "Utility to easily edit and preview CosmeticsCore cosmetics.",
 		icon: icon,
-		version: "1.0.1-beta-1",
+		version: "1.1.0",
 		variant: "both",
         min_version: "4.6.4",
 		onload: onload,
@@ -41,19 +41,61 @@
             menu.label.prepend(img)
 
             function getDynamicMsg(dynamic) {
-                return "This self body cosmetic is compatible with " + dynamic + ". To create a self body cosmetic for other versions please open the original cosmetic file and check this menu for another option."
+                if(isNormalModel()) {
+                    return "This normal body cosmetic is compatible with Minecraft client 1.20.1 and lower. To create the model compatible with 1.20.2 (normal_2) open the CosmeticsCore menu and press on 'Create Model'."
+                }
+                else if(isNormalModel2()) {
+                    return "This normal body cosmetic is compatible with Minecraft client 1.20.2 and greater.."
+                }
+                else if(isSelfModel()){
+                    return "This self body cosmetic is compatible with Minecraft client 1.20.1 and lower. To create the model compatible with 1.20.2 (self_2) open the CosmeticsCore menu and press on 'Create Model'."
+                } else if(isSelfModelNew()) {
+                    return "This self body cosmetic is compatible with Minecraft client 1.20.2 and greater. To create the model compatible with 1.20.1 (self) open the CosmeticsCore menu and press on 'Create Model'."
+                }
             }
             MenuBar.addAction(
                 CustomAction({
-                    icon: 'checkroom',
+                    icon: 'public',
                     category: 'CosmeticsCore',
-                    name: "Self body cosmetic compatibility: Minecraft client 1.20.1 and lower",
+                    name: "Normal body cosmetic | MC client 1.20.1 and lower",
+                    id: 'body_cosmetic_info',
+                    condition: () => isNormalModel(),
+                    click: function () {
+                        Blockbench.showMessageBox({
+                            title: "Info",
+                            message: getDynamicMsg()
+                        });
+                    },
+                }),
+                'CosmeticsCore'
+            )
+            MenuBar.addAction(
+                CustomAction({
+                    icon: 'public',
+                    category: 'CosmeticsCore',
+                    name: "Normal body cosmetic | MC client 1.20.2 and greater",
+                    id: 'body_cosmetic_info',
+                    condition: () => isNormalModel2(),
+                    click: function () {
+                        Blockbench.showMessageBox({
+                            title: "Info",
+                            message: getDynamicMsg()
+                        });
+                    },
+                }),
+                'CosmeticsCore'
+            )
+            MenuBar.addAction(
+                CustomAction({
+                    icon: 'camera-front',
+                    category: 'CosmeticsCore',
+                    name: "Self body cosmetic | MC client 1.20.1 and lower",
                     id: 'body_cosmetic_info',
                     condition: () => isSelfModel(),
                     click: function () {
                         Blockbench.showMessageBox({
                             title: "Info",
-                            message: getDynamicMsg("Minecraft client 1.20.1 and lower")
+                            message: getDynamicMsg()
                         });
                     },
                 }),
@@ -61,46 +103,33 @@
             )
             MenuBar.addAction(
                 CustomAction({
-                    icon: 'checkroom',
+                    icon: 'camera-front',
                     category: 'CosmeticsCore',
-                    name: "Self body cosmetic type: 1.20.2 and greater",
+                    name: "Self body cosmetic | MC client 1.20.2 and greater",
                     id: 'body_cosmetic_info',
                     condition: () => isSelfModelNew(),
                     click: function () {
                         Blockbench.showMessageBox({
                             title: "Info",
-                            message: getDynamicMsg("Minecraft client 1.20.2 and greater")
+                            message: getDynamicMsg()
                         });
                     },
                 }),
                 'CosmeticsCore'
             )
             MenuBar.addAction(
-                new MenuSeparator('amogus'),
+                new MenuSeparator('separator'),
                 'CosmeticsCore'
             )
             MenuBar.addAction(
                 CustomAction({
                     icon: 'checkroom',
                     category: 'CosmeticsCore',
-                    name: "Preview global body model",
-                    id: 'body_cosmetic_preview',
-                    condition: () => !isBodyCosmeticsViewSelected() && !isAnySelfModel(),
+                    name: "Preview",
+                    id: 'preview_cosmetic',
+                    condition: () => !isBodyCosmeticsViewSelected(),
                     click: function () {
                         bodyCosmeticPreview();
-                    },
-                }),
-                'CosmeticsCore'
-            )
-            MenuBar.addAction(
-                CustomAction({
-                    icon: 'checkroom',
-                    category: 'CosmeticsCore',
-                    name: "Preview self body model",
-                    id: 'body_cosmetic_preview_self',
-                    condition: () => !isBodyCosmeticsViewSelected() && isAnySelfModel(),
-                    click: function () {
-                        bodyCosmeticPreview(isSelfModelNew());
                     },
                 }),
                 'CosmeticsCore'
@@ -110,8 +139,8 @@
                 CustomAction({
                     icon: 'cancel',
                     category: 'CosmeticsCore',
-                    name: "Exit Body Cosmetic Preview",
-                    id: 'exit_body_cosmetic_preview',
+                    name: "Exit Preview",
+                    id: 'exit_cosmetic_preview',
                     condition: () => isBodyCosmeticsViewSelected(),
                     click: function () {
                         setBodyCosmeticsViewSelected(false)
@@ -123,18 +152,73 @@
 
             MenuBar.addAction(
                 CustomAction({
-                    icon: 'auto_fix_high',
+                    icon: 'highlight_alt',
                     category: 'CosmeticsCore',
-                    name: "Auto fix self model",
-                    id: 'auto_fix_self_model',
-                    condition: () => isAnySelfModel(),
+                    name: "Extend model position limits",
+                    id: 'extend_model_position_limits',
                     click: function () {
-                        autoFixSelfModel()
+                        askExtendModelPositionLimits()
                     },
                 }),
                 'CosmeticsCore'
             )
+            
+            function createNormalModel2 () {
+                if(!Project.saved) {
+                    Blockbench.showMessageBox({
+                        title: "Error",
+                        message: "Please save this model first."
+                    });
+                    return;
+                }
 
+                let suffix = "_normal_2"
+
+                // If it's not already a self model
+                if(!Project.export_path.match(/_normal_2\.json/g)) {
+                    let origPath = Project.export_path
+                    let origName = Project.name
+                    // Temporary change export path of the current project in order to export it to a new file.
+                    let selfPath = Project.export_path.replace(".json", suffix + ".json")
+                    Project.export_path = selfPath
+                    // Do export
+                    // NOTE: file name might have been changed by the user using the save file dialog, careful.
+                    Project.format.codec.export()
+
+                    // Restore original name for this project
+                    Project.export_path = origPath
+                    Project.name = origName
+
+                    // Load the just saved self model in a new tab.
+                    // WARNING: it's unreliable: if the user pressed CANCEL during name selection and the file already exists
+                    // It will open that file even if it's not our new created file (since none was created).
+                    Blockbench.read([selfPath],{
+                        resource_id: 'model',
+                        extensions: Codec.getAllExtensions(),
+                        type: 'Model',
+                    }, function(files) {
+                        if(files.length === 1) {
+                            loadModelFile(files[0]);
+
+                            Blockbench.showMessageBox({
+                                title: "Success",
+                                message: "Successfully generated normal model. You can now edit its preview position to make it look correctly placed."
+                            });
+
+                            setTimeout(function() {
+                                bodyCosmeticPreview();
+                            }, 1500);
+
+                        } else {
+                            Blockbench.showMessageBox({
+                                title: "Error",
+                                message: "Please save the self model as required."
+                            });
+                        }
+                    })
+                }
+            }
+            
             function createSelfModel (isNewSelfBody) {
                 if(!Project.saved) {
                     Blockbench.showMessageBox({
@@ -147,7 +231,7 @@
                 let suffix = isNewSelfBody ? "_self_2" : "_self"
 
                 // If it's not already a self model
-                if(!Project.export_path.match(/_self(|_2).json/g)) {
+                if(!Project.export_path.match(/_self(|_self_2).json/g)) {
                     let origPath = Project.export_path
                     let origName = Project.name
                     // Temporary change export path of the current project in order to export it to a new file.
@@ -192,25 +276,34 @@
             }
             MenuBar.addAction(
                 CustomAction({
-                    icon: 'auto_fix_high',
+                    icon: 'person_add_alt',
                     category: 'CosmeticsCore',
-                    name: "Create Self Model",
-                    id: 'create_self_model',
-                    condition: () => !isAnySelfModel(),
+                    name: "Create Model",
+                    id: 'create_model',
+                    condition: () => !isAnySelfModel() && !isNormalModel2(),
                     children() {
                         return [
                             CustomAction({
-                                icon: 'auto_fix_high',
+                                icon: 'arrow_forward',
                                 category: 'CosmeticsCore',
-                                name: "Self Model 1.20.1 and lower",
+                                name: "Normal - MC 1.20.2 and greater (normal_2)",
+                                id: 'create_normal_model_2',
+                                condition: () => !isAnySelfModel(),
+                                click: () => createNormalModel2(),
+                            }),
+                            new MenuSeparator('separator'),
+                            CustomAction({
+                                icon: 'arrow_back',
+                                category: 'CosmeticsCore',
+                                name: "Self - MC 1.20.1 and lower (self)",
                                 id: 'create_self_model_1',
                                 condition: () => !isAnySelfModel(),
                                 click: () => createSelfModel(),
                             }),
                             CustomAction({
-                                icon: 'auto_fix_high',
+                                icon: 'arrow_forward',
                                 category: 'CosmeticsCore',
-                                name: "Self Model 1.20.1+",
+                                name: "Self - MC 1.20.1 and greater (self_2)",
                                 id: 'create_self_model_2',
                                 condition: () => !isAnySelfModel(),
                                 click: () => createSelfModel(true),
@@ -224,12 +317,11 @@
 
             MenuBar.update()
 
-
             const display_angle_preset = {
                 projection: 'perspective',
-                position: [-200, 40, -200],
-                target: [0, 8, 0],
-                default: true
+                position: [-108, 20, 83],
+                rotation: [2, 125, -1.13],
+                target: [0, 8, 0]
             }
             let prevSelectedMode;
 
@@ -263,12 +355,6 @@
                 window.displayReferenceObjects.bar(['player'])
 
                 // Set camera rotation and position
-                display_preview.camPers.position.set(-44, 40, -44)
-                display_preview.controls.target.set(0, 14, 0)
-                display_preview.loadAnglePreset({
-                    position: [-44, 40, -44],
-                    target: [0, 14, 0]
-                })
                 display_preview.loadAnglePreset(display_angle_preset)
             }
 
@@ -292,22 +378,35 @@
                 }
             });
 
+            function isNormalModel() {
+                return !isNormalModel2() && !isAnySelfModel();
+            }
+
+            function isNormalModel2() {
+                if(!Project.name)
+                    return false;
+                if(isAnySelfModel()) {
+                    return false;
+                }
+                return Project.name.endsWith("_normal_2");
+            }
+
             function isAnySelfModel() {
                 if(!Project.name)
                     return false;
-                return Project.name.endsWith("self") || Project.name.endsWith("self_2");
+                return Project.name.endsWith("_self") || Project.name.endsWith("_self_2");
             }
 
             function isSelfModel() {
                 if(!Project.name)
                     return false;
-                return Project.name.endsWith("self");
+                return Project.name.endsWith("_self");
             }
 
             function isSelfModelNew() {
                 if(!Project.name)
                     return false;
-                return Project.name.endsWith("self_2");
+                return Project.name.endsWith("_self_2");
             }
 
             function removeTool(toolId) {
@@ -409,23 +508,18 @@
                 display_base.scale.z = (slot.scale[2]||0.001) * (slot.mirror[2] ? -1 : 1);
 
                 //Transformer.center()
+                let offset = 0;
+                if(isSelfModelNew()) {
+                    offset = 97.5;
+                } else if(isSelfModel()) {
+                    offset = 95;
+                } else if(isNormalModel2()) {
+                    offset = 35 + 10.75;
+                } else if(isNormalModel()) {
+                    offset = 35;
+                }
 
-                let offset = isSelfModelNew() ? 97.5 : (isSelfModel() ? 95 : 35);
                 display_base.position.y = slot.translation[1] + offset;
-
-                // Hack to move the gizmo on the model and avoid the glitchy location (too high)
-                // delete Transformer.rotation_ref;
-                // Transformer.attach(display_base)
-                // display_base.position.y -= 100 // Temporary change the model location to hack the gizmo location
-                // display_base.getWorldPosition(Transformer.position);
-                // Transformer.update()
-                // display_base.position.y += 110 // Restore the correct offset to the model
-
-
-                // Hack to move the gizmo on the model and avoid the glitchy location (too high)
-                // delete Transformer.rotation_ref;
-                // Transformer.position.y = 67.5 - display_base.position.y
-                // Transformer.update()
 
                 // Temporary hack to keep the gizmo in the center of the back
                 fixGizmoPreviewCosmetic()
@@ -435,20 +529,30 @@
                 setBodyCosmeticsViewSelected(true)
 
                 lastToastNotif?.delete()
-                if(isAnySelfModel()) {
+                if(isSelfModel()) {
                     lastToastNotif = Blockbench.showToastNotification({
-                        text: `This is a SELF cosmetic model.\n(If you want to edit the GLOBAL model: create a new file and rename it to '${Project.name.replaceAll("_self", "")}.json')`,
+                        text: `Preview of self cosmetic model.`,
                         expire: 30000
                     });
-                } else  {
+                } else if(isSelfModelNew()) {
                     lastToastNotif = Blockbench.showToastNotification({
-                        text: `This is a GLOBAL cosmetic model.\n(If you want to edit the SELF model: create a new file and rename it to '${Project.name}_self.json')`,
+                        text: `Preview of self_2 cosmetic model.`,
+                        expire: 30000
+                    });
+                } else if(isNormalModel()) {
+                    lastToastNotif = Blockbench.showToastNotification({
+                        text: `Preview of normal cosmetic model.`,
+                        expire: 30000
+                    });
+                } else if(isNormalModel2()) {
+                    lastToastNotif = Blockbench.showToastNotification({
+                        text: `Preview of normal_2 cosmetic model.`,
                         expire: 30000
                     });
                 }
             }
 
-            function selfModelScaleDown() {
+            function extendModelPositionLimits() {
                 let headData = getHeadData();
                 if(new Set(headData.scale).size === 1) {
 
@@ -460,7 +564,7 @@
                         return;
                     }
 
-                    Modes.options.edit.select()
+                    Modes.options.display.select()
 
                     scale(0.5)
 
@@ -567,18 +671,27 @@
                 ModelScaler.dialog.confirm();
             }
 
-            function autoFixSelfModel() {
+            function askExtendModelPositionLimits() {
+
+                if(getHeadData().translation[1] > -80) {
+                    Blockbench.showMessageBox({
+                        title: "Info",
+                        message:"No need to do that. Your model is not on the side of any of the model bounding box.",
+                        icon: 'info',
+                    });
+                    return;
+                }
 
                 Blockbench.showMessageBox({
-                    title: "WARNING!",
-                    message:"DO NOT USE THIS FEATURE MULTIPLE TIMES FOR THE SAME MODEL! ONE TIME IS ENOUGH!\n\nPlease make a backup before accepting.\n\nDo you want to automatically fix the model to allow moving it up/down further more?",
+                    title: "⚠️Warning",
+                    message:"Please make a backup before accepting.\n\nDo you want to automatically fix the model to allow moving it up/down further more?",
                     icon: 'error',
-                    buttons: ["NO", "YES"],
-                    cancel: 0,
-                    confirm: 1
+                    buttons: ["⚠️Confirm⚠️", "Cancel"],
+                    confirm: 0,
+                    cancel: 1, // By default also used by the X button of the title bar.
                 }, function(i) {
-                    if(i === 1) {
-                        selfModelScaleDown()
+                    if(i === 0) {
+                        extendModelPositionLimits()
                     }
                 });
             }
